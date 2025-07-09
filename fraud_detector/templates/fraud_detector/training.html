@@ -1,0 +1,272 @@
+{% extends 'base.html' %}
+
+{% block title %}Model Training{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
+    <h1>Model Training</h1>
+    <a href="{% url 'inference' %}" style="background-color: #333; color: white; text-decoration: none; padding: 8px 16px; border-radius: 4px;">
+        Run Inference
+    </a>
+</div>
+
+{% if not data_ready %}
+<div style="background-color: #fff3cd; border: 1px solid #ffecb5; color: #856404; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
+    <div style="display: flex; align-items: flex-start;">
+        <div>
+            <h3 style="margin-top: 0; font-size: 18px;">Data Not Ready</h3>
+            <p>{{ data_status_message }}</p>
+            <div style="margin-top: 10px;">
+                {% if not file_exists %}
+                <form method="POST" action="{% url 'process_for_inference' %}">
+                    {% csrf_token %}
+                    <button type="submit" style="background-color: #ffc107; color: #212529; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
+                        Process Data
+                    </button>
+                </form>
+                {% elif processed_count < total_count %}
+                <div style="font-size: 14px; margin-bottom: 10px;">{{ processed_count }} of {{ total_count }} transactions processed</div>
+                <form method="POST" action="{% url 'process_for_inference' %}">
+                    {% csrf_token %}
+                    <button type="submit" style="background-color: #ffc107; color: #212529; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
+                        Complete Processing
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<div style="background-color: #d4edda; border: 1px solid #c3e6cb; color: #155724; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
+    <div style="display: flex; align-items: flex-start;">
+        <div>
+            <h3 style="margin-top: 0; font-size: 18px;">Data Ready</h3>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px;">
+    <div>
+        <div style="border: 1px solid #ddd; padding: 20px; background-color: white; border-radius: 4px; margin-bottom: 20px;">
+            <h2 style="margin-top: 0; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #ddd;">GNN Model Configuration</h2>
+            
+            <form method="POST">
+                {% csrf_token %}
+                
+                <div style="background-color: #f8f9fa; padding: 15px; border-radius: 4px; margin-bottom: 20px;">
+                    <h3 style="margin-top: 0; margin-bottom: 15px;">Model Architecture</h3>
+                    <div style="display: grid; grid-template-columns: 1fr; gap: 15px;">
+                        <div>
+                            <label for="{{ form.model_type.id_for_label }}" style="display: block; margin-bottom: 8px; font-weight: bold;">{{ form.model_type.label }}</label>
+                            {{ form.model_type }}
+                            {% if form.model_type.errors %}
+                            <p style="color: #dc3545; margin-top: 5px; font-size: 14px;">{{ form.model_type.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                        
+                        <div>
+                            <label for="{{ form.model_name.id_for_label }}" style="display: block; margin-bottom: 8px; font-weight: bold;">{{ form.model_name.label }}</label>
+                            {{ form.model_name }}
+                            {% if form.model_name.errors %}
+                            <p style="color: #dc3545; margin-top: 5px; font-size: 14px;">{{ form.model_name.errors.0 }}</p>
+                            {% endif %}
+                            {% if form.model_name.help_text %}
+                            <p style="color: #6c757d; margin-top: 5px; font-size: 14px;">{{ form.model_name.help_text }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="background-color: #f8f9fa; padding: 15px; border-radius: 4px; margin-bottom: 20px;">
+                    <h3 style="margin-top: 0; margin-bottom: 15px;">Model Adaptations</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div style="display: flex; align-items: flex-start;">
+                            <div style="margin-top: 3px;">
+                                {{ form.use_edge_mlps }}
+                            </div>
+                            <div style="margin-left: 10px;">
+                                <label for="{{ form.use_edge_mlps.id_for_label }}" style="font-weight: bold;">{{ form.use_edge_mlps.label }}</label>
+                                <p style="color: #6c757d; margin-top: 5px; font-size: 14px;">{{ form.use_edge_mlps.help_text }}</p>
+                            </div>
+                        </div>
+                        
+                        <div style="display: flex; align-items: flex-start;">
+                            <div style="margin-top: 3px;">
+                                {{ form.use_reverse_mp }}
+                            </div>
+                            <div style="margin-left: 10px;">
+                                <label for="{{ form.use_reverse_mp.id_for_label }}" style="font-weight: bold;">{{ form.use_reverse_mp.label }}</label>
+                                <p style="color: #6c757d; margin-top: 5px; font-size: 14px;">{{ form.use_reverse_mp.help_text }}</p>
+                            </div>
+                        </div>
+                        
+                        <div style="display: flex; align-items: flex-start;">
+                            <div style="margin-top: 3px;">
+                                {{ form.use_ports }}
+                            </div>
+                            <div style="margin-left: 10px;">
+                                <label for="{{ form.use_ports.id_for_label }}" style="font-weight: bold;">{{ form.use_ports.label }}</label>
+                                <p style="color: #6c757d; margin-top: 5px; font-size: 14px;">{{ form.use_ports.help_text }}</p>
+                            </div>
+                        </div>
+                        
+                        <div style="display: flex; align-items: flex-start;">
+                            <div style="margin-top: 3px;">
+                                {{ form.use_ego_ids }}
+                            </div>
+                            <div style="margin-left: 10px;">
+                                <label for="{{ form.use_ego_ids.id_for_label }}" style="font-weight: bold;">{{ form.use_ego_ids.label }}</label>
+                                <p style="color: #6c757d; margin-top: 5px; font-size: 14px;">{{ form.use_ego_ids.help_text }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="background-color: #f8f9fa; padding: 15px; border-radius: 4px; margin-bottom: 20px;">
+                    <h3 style="margin-top: 0; margin-bottom: 15px;">Training Parameters</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div>
+                            <label for="{{ form.batch_size.id_for_label }}" style="display: block; margin-bottom: 8px; font-weight: bold;">{{ form.batch_size.label }}</label>
+                            {{ form.batch_size }}
+                            {% if form.batch_size.errors %}
+                            <p style="color: #dc3545; margin-top: 5px; font-size: 14px;">{{ form.batch_size.errors.0 }}</p>
+                            {% endif %}
+                            {% if form.batch_size.help_text %}
+                            <p style="color: #6c757d; margin-top: 5px; font-size: 14px;">{{ form.batch_size.help_text }}</p>
+                            {% endif %}
+                        </div>
+                        
+                        <div>
+                            <label for="{{ form.epochs.id_for_label }}" style="display: block; margin-bottom: 8px; font-weight: bold;">{{ form.epochs.label }}</label>
+                            {{ form.epochs }}
+                            {% if form.epochs.errors %}
+                            <p style="color: #dc3545; margin-top: 5px; font-size: 14px;">{{ form.epochs.errors.0 }}</p>
+                            {% endif %}
+                            {% if form.epochs.help_text %}
+                            <p style="color: #6c757d; margin-top: 5px; font-size: 14px;">{{ form.epochs.help_text }}</p>
+                            {% endif %}
+                        </div>
+                        
+                        <div>
+                            <label for="{{ form.num_neighbors.id_for_label }}" style="display: block; margin-bottom: 8px; font-weight: bold;">{{ form.num_neighbors.label }}</label>
+                            {{ form.num_neighbors }}
+                            {% if form.num_neighbors.errors %}
+                            <p style="color: #dc3545; margin-top: 5px; font-size: 14px;">{{ form.num_neighbors.errors.0 }}</p>
+                            {% endif %}
+                            {% if form.num_neighbors.help_text %}
+                            <p style="color: #6c757d; margin-top: 5px; font-size: 14px;">{{ form.num_neighbors.help_text }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="text-align: right;">
+                    <button type="submit" style="background-color: #007bff; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;" {% if not data_ready %}disabled style="opacity: 0.5; cursor: not-allowed;"{% endif %}>
+                        Start Training
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div>
+        <div style="border: 1px solid #ddd; padding: 20px; background-color: white; border-radius: 4px;">
+            <h2 style="margin-top: 0; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #ddd;">Trained Models</h2>
+            
+            {% if trained_models %}
+            <div style="display: flex; flex-direction: column; gap: 15px;">
+                {% for model in trained_models %}
+                <div style="background-color: #f8f9fa; padding: 15px; border-radius: 4px; border: 1px solid #ddd;">
+                    <h3 style="margin-top: 0; margin-bottom: 5px; font-size: 16px;">
+                        {{ model.name }}
+                        <span style="margin-left: 8px; font-size: 12px; padding: 3px 8px; border-radius: 10px; background-color: #6c757d; color: white;">{{ model.config.model_type }}</span>
+                    </h3>
+                    <div style="font-size: 12px; color: #6c757d; margin-bottom: 10px;">
+                        Last modified: {{ model.modified|date:"M d, Y H:i" }}
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px; color: #6c757d; margin-bottom: 10px;">
+                        <div>Batch size: {{ model.config.batch_size }}</div>
+                        <div>Epochs: {{ model.config.epochs }}</div>
+                        <div>Edge MLPs: {% if model.config.use_edge_mlps %}Yes{% else %}No{% endif %}</div>
+                        <div>Rev. MP: {% if model.config.use_reverse_mp %}Yes{% else %}No{% endif %}</div>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <a href="{% url 'model_training_status' model_name=model.name %}" style="font-size: 12px; padding: 4px 8px; background-color: #6c757d; color: white; text-decoration: none; border-radius: 4px;">
+                            Details
+                        </a>
+                        <a href="{% url 'inference' %}?model={{ model.name }}" style="font-size: 12px; padding: 4px 8px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px;">
+                            Run
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div style="text-align: center; padding: 30px 0;">
+                <p style="color: #6c757d;">No trained models available</p>
+                <p style="font-size: 14px; color: #adb5bd; margin-top: 5px;">Configure and train a model to see it listed</p>
+            </div>
+            {% endif %}
+            
+            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd;">
+                <h3 style="margin-top: 0; margin-bottom: 15px;">Data Status</h3>
+                
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <div>
+                        <div style="font-size: 14px; color: #6c757d; margin-bottom: 5px;">Formatted Data File</div>
+                        <div style="display: flex; align-items: center;">
+                            {% if file_exists %}
+                            <span>Available</span>
+                            {% else %}
+                            <span>Not found</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    {% if not data_ready %}
+                    <div style="margin-top: 15px;">
+                        <form method="POST" action="{% url 'process_for_inference' %}">
+                            {% csrf_token %}
+                            <button type="submit" style="width: 100%; background-color: #007bff; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
+                                Process Data
+                            </button>
+                        </form>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const modelTypeSelect = document.getElementById('{{ form.model_type.id_for_label }}');
+    
+    modelTypeSelect.addEventListener('change', function() {
+        const modelType = this.value;
+        
+ 
+    });
+    
+    {% if not data_ready %}
+    const checkDataStatus = () => {
+        fetch('{% url "processing_status" %}')
+            .then(response => response.json())
+            .then(data => {
+            })
+            .catch(error => {
+                console.error('Error checking data status:', error);
+            });
+    };
+    
+    setInterval(checkDataStatus, 10000);
+    {% endif %}
+});
+</script>
+{% endblock %}

@@ -1,0 +1,362 @@
+{% extends 'base.html' %}
+
+{% block title %}Model Explainability{% endblock %}
+{% load custom_tags %}
+{% block extra_css %}
+<style>
+    .feature-bar {
+        height: 20px;
+        background-color: #00B4D8;
+        border-radius: 4px;
+    }
+    
+    .feature-container {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+    
+    .shap-plot {
+        width: 100%;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        background-color: #f8f9fa;
+        overflow: hidden;
+    }
+    
+    .shap-plot img {
+        width: 100%;
+        height: auto;
+    }
+    
+    .alert-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 3px 10px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+    
+    .alert-badge.success {
+        background-color: rgba(40, 167, 69, 0.2);
+        color: #28a745;
+    }
+    
+    .alert-badge.warning {
+        background-color: rgba(255, 193, 7, 0.2);
+        color: #ffc107;
+    }
+    
+    .tabs {
+        display: flex;
+        border-bottom: 1px solid #ddd;
+        margin-bottom: 1rem;
+    }
+    
+    .tab {
+        padding: 0.5rem 1rem;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+    }
+    
+    .tab.active {
+        border-bottom: 2px solid #00B4D8;
+        color: #00B4D8;
+    }
+    
+    .tab-content {
+        display: none;
+    }
+    
+    .tab-content.active {
+        display: block;
+    }
+    
+    .plot-tab {
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 14px;
+    }
+    
+    .plot-tab:hover {
+        color: #00B4D8;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+    <h1 style="font-size: 24px; font-weight: 600;">Model Explainability</h1>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr 2fr; gap: 24px;">
+    <!-- Control Panel -->
+    <div style="background-color: white; border: 1px solid #ddd; border-radius: 4px; padding: 24px;">
+        <h2 style="font-size: 20px; font-weight: 600; margin-bottom: 16px; border-bottom: 1px solid #eee; padding-bottom: 8px;">Model Controls</h2>
+        
+        {% if not file_exists %}
+        <div style="background-color: #f8d7da; padding: 16px; border-radius: 4px; border: 1px solid #f5c6cb; margin-bottom: 16px;">
+            <p style="color: #721c24;"><i class="fas fa-exclamation-circle" style="margin-right: 8px;"></i>Transaction data not found.</p>
+        </div>
+        {% endif %}
+        
+        {% if not model_trained %}
+        <div style="{% if file_exists %}background-color: #fff3cd; border: 1px solid #ffeaa7;{% else %}background-color: #f8f9fa; border: 1px solid #dee2e6;{% endif %} padding: 16px; border-radius: 4px; margin-bottom: 16px;">
+            <p style="{% if file_exists %}color: #856404;{% else %}color: #6c757d;{% endif %}">
+                <i class="fas fa-info-circle" style="margin-right: 8px;"></i>
+                {% if file_exists %}
+                No trained XGBoost model found.
+                {% else %}
+                You need to process transaction data.
+                {% endif %}
+            </p>
+        </div>
+        {% endif %}
+        
+        <!-- Train Model Form -->
+        <form method="POST" style="margin-bottom: 24px;">
+            {% csrf_token %}
+            <button type="submit" name="train_model" style="width: 100%; padding: 10px 16px; background-color: #6c757d; color: white; border: none; border-radius: 4px; transition: background-color 0.3s; font-weight: 500; {% if not file_exists %}opacity: 0.5; cursor: not-allowed;{% endif %}" {% if not file_exists %}disabled{% endif %}>
+                <i class="fas fa-cogs" style="margin-right: 8px;"></i>Train XGBoost Model
+            </button>
+        </form>
+        
+        <!-- SHAP Explainer Form -->
+        <form method="POST" style="margin-bottom: 24px;">
+            {% csrf_token %}
+            <h3 style="font-weight: 500; margin-bottom: 12px; color: #333;">SHAP Explainer Settings</h3>
+            
+            <div style="margin-bottom: 16px;">
+                <label for="explainer" style="display: block; font-size: 14px; font-weight: 500; margin-bottom: 4px; color: #333;">Explainer Type</label>
+                <select id="explainer" name="explainer" style="width: 100%; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; background-color: white; color: #333;">
+                    {% for explainer in explainer_types %}
+                    <option value="{{ explainer }}" {% if explainer == selected_explainer %}selected{% endif %}>{{ explainer }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div style="margin-bottom: 16px;">
+                <label for="edge_id" style="display: block; font-size: 14px; font-weight: 500; margin-bottom: 4px; color: #333;">Transaction ID (optional)</label>
+                <input type="number" id="edge_id" name="edge_id" value="{{ specific_edge_id|default:'5078344' }}" placeholder="Enter specific transaction ID" 
+                        style="width: 100%; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; background-color: white; color: #333;">
+                <span style="font-size: 12px; color: #666; margin-top: 4px; display: block;">Leave empty to analyze a fraudulent transaction</span>
+            </div>
+            
+            <div style="margin-bottom: 16px;">
+                <label for="max_samples" style="display: block; font-size: 14px; font-weight: 500; margin-bottom: 4px; color: #333;">Max Samples</label>
+                <input type="number" id="max_samples" name="max_samples" value="{{ max_samples|default:'' }}" placeholder="Leave empty to use all samples" 
+                        style="width: 100%; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; background-color: white; color: #333;">
+            </div>
+            
+            <button type="submit" name="generate_shap" style="width: 100%; padding: 10px 16px; background-color: #007bff; color: white; border: none; border-radius: 4px; transition: background-color 0.3s; font-weight: 500; {% if not model_trained %}opacity: 0.5; cursor: not-allowed;{% endif %}" {% if not model_trained %}disabled{% endif %}>
+                <i class="fas fa-lightbulb" style="margin-right: 8px;"></i>Generate SHAP Explanations
+            </button>
+        </form>
+        
+        {% if model_trained and training_result %}
+        <div style="background-color: #f8f9fa; padding: 16px; border-radius: 4px; border: 1px solid #e9ecef;">
+            <h3 style="font-weight: 500; margin-bottom: 8px; color: #333;">Model Information</h3>
+            <div style="display: flex; flex-direction: column; gap: 4px; font-size: 14px;">
+                <p style="color: #495057;"><span style="color: #666;">Features:</span> {{ training_result.feature_count }}</p>
+                <p style="color: #495057;"><span style="color: #666;">Training samples:</span> {{ training_result.training_samples }}</p>
+                <p style="color: #495057;"><span style="color: #666;">Validation samples:</span> {{ training_result.validation_samples }}</p>
+                <p style="color: #495057;"><span style="color: #666;">Test samples:</span> {{ training_result.test_samples }}</p>
+                <p style="color: #495057;"><span style="color: #666;">F1 Score:</span> {{ training_result.metrics.minority_f1|floatformat:4 }}</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Results Panel -->
+    <div>
+        {% if explained_transaction %}
+        <div style="background-color: white; border: 1px solid #ddd; border-radius: 4px; padding: 24px; margin-bottom: 24px;">
+            <h2 style="font-size: 20px; font-weight: 600; margin-bottom: 16px; border-bottom: 1px solid #eee; padding-bottom: 8px;">Explained Transaction</h2>
+            
+            <div style="background-color: #f8f9fa; padding: 16px; border-radius: 4px; margin-bottom: 16px; border: 1px solid #e9ecef;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div>
+                        <p style="font-size: 14px; color: #666;">Transaction ID</p>
+                        <p style="font-size: 18px; font-weight: 500; color: #333;">{{ explained_transaction.edge_id }}</p>
+                    </div>
+                    <div>
+                        <p style="font-size: 14px; color: #666;">Classification</p>
+                        <p style="font-size: 18px; font-weight: 500; {% if explained_transaction.is_fraud %}color: #dc3545;{% else %}color: #28a745;{% endif %}">
+                            {% if explained_transaction.is_fraud %}
+                            <i class="fas fa-exclamation-triangle" style="margin-right: 4px;"></i> Fraudulent Transaction
+                            {% else %}
+                            <i class="fas fa-check-circle" style="margin-right: 4px;"></i> Legitimate Transaction
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- SHAP Visualizations -->
+        {% if shap_plots %}
+        <div style="background-color: white; border: 1px solid #ddd; border-radius: 4px; padding: 24px; margin-bottom: 24px;">
+            <h2 style="font-size: 20px; font-weight: 600; margin-bottom: 16px; border-bottom: 1px solid #eee; padding-bottom: 8px;">SHAP Explanations</h2>
+            
+            <!-- Tabs for different plots -->
+            <div style="margin-bottom: 16px; border-bottom: 1px solid #ddd;">
+                <div style="display: flex;">
+                    <button class="plot-tab" data-target="feature-importance" style="padding: 8px 16px; border-bottom: 2px solid #00B4D8; color: #00B4D8;">Feature Importance</button>
+                    <button class="plot-tab" data-target="beeswarm" style="padding: 8px 16px; border-bottom: 2px solid transparent; color: #666;">Feature Distribution</button>
+                    <button class="plot-tab" data-target="waterfall" style="padding: 8px 16px; border-bottom: 2px solid transparent; color: #666;">Transaction Overview</button>
+                </div>
+            </div>
+            
+            <!-- Tab Content -->
+            <div class="plot-content" id="feature-importance-content">
+                <img src="data:image/png;base64,{{ shap_plots.summary_plot }}" alt="SHAP Feature Importance" style="width: 100%;">
+                <p style="font-size: 14px; color: #666; margin-top: 8px;">Feature importance plot.</p>
+            </div>
+            
+            <div class="plot-content" id="beeswarm-content" style="display: none;">
+                <img src="data:image/png;base64,{{ shap_plots.dependence_plot }}" alt="SHAP Feature Distribution" style="width: 100%;">
+                <p style="font-size: 14px; color: #666; margin-top: 8px;">Beeswarm Plot</p>
+            </div>
+            
+            <div class="plot-content" id="waterfall-content" style="display: none;">
+                <img src="data:image/png;base64,{{ shap_plots.waterfall_plot }}" alt="SHAP Waterfall Plot" style="width: 100%;">
+                <p style="font-size: 14px; color: #666; margin-top: 8px;">
+                    Waterfall plot
+                </p>
+            </div>
+        </div>
+        {% endif %}
+        
+        {% if feature_importance %}
+        <div style="background-color: white; border: 1px solid #ddd; border-radius: 4px; padding: 24px; margin-bottom: 24px;">
+            <h2 style="font-size: 20px; font-weight: 600; margin-bottom: 16px; border-bottom: 1px solid #eee; padding-bottom: 8px;">Feature Importance</h2>
+            <div id="feature-importance-chart" style="width: 100%; height: 400px;"></div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if feature_importance %}
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const featureImportance = {{ feature_importance|safe }};
+        
+        const sortedFeatures = Object.entries(featureImportance)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 15);
+            
+        const categories = sortedFeatures.map(item => item[0]);
+        const values = sortedFeatures.map(item => item[1]);
+        
+        const options = {
+            series: [{
+                name: 'Importance',
+                data: values
+            }],
+            chart: {
+                type: 'bar',
+                height: 400,
+                fontFamily: 'Arial, sans-serif',
+                background: 'transparent',
+                foreColor: '#333'
+            },
+            plotOptions: {
+                bar: {
+                    horizontal: true,
+                    borderRadius: 4
+                }
+            },
+            dataLabels: {
+                enabled: false
+            },
+            xaxis: {
+                categories: categories,
+                labels: {
+                    style: {
+                        colors: '#666',
+                        fontSize: '12px'
+                    }
+                }
+            },
+            yaxis: {
+                labels: {
+                    style: {
+                        colors: '#666',
+                        fontSize: '12px'
+                    }
+                }
+            },
+            grid: {
+                borderColor: '#f1f1f1',
+                xaxis: {
+                    lines: {
+                        show: true
+                    }
+                },
+                yaxis: {
+                    lines: {
+                        show: false
+                    }
+                }
+            },
+            theme: {
+                mode: 'light'
+            },
+            colors: ['#00B4D8']
+        };
+        
+        const chart = new ApexCharts(document.querySelector("#feature-importance-chart"), options);
+        chart.render();
+    });
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        const tabs = document.querySelectorAll('.plot-tab');
+        tabs.forEach(tab => {
+            tab.addEventListener('click', function() {
+                tabs.forEach(t => {
+                    t.style.borderBottom = '2px solid transparent';
+                    t.style.color = '#666';
+                });
+                
+                this.style.borderBottom = '2px solid #00B4D8';
+                this.style.color = '#00B4D8';
+                
+                document.querySelectorAll('.plot-content').forEach(content => {
+                    content.style.display = 'none';
+                });
+                
+                const target = this.getAttribute('data-target');
+                document.getElementById(`${target}-content`).style.display = 'block';
+            });
+        });
+    });
+</script>
+{% endif %}
+
+<style>
+button[type="submit"]:hover:not(:disabled) {
+    background-color: #0056b3;
+}
+
+button[type="submit"]:disabled {
+    background-color: #6c757d;
+    cursor: not-allowed;
+    opacity: 0.65;
+}
+
+select:focus, input:focus {
+    outline: none;
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+}
+
+.plot-tab:focus {
+    outline: none;
+}
+</style>
+{% endblock %}

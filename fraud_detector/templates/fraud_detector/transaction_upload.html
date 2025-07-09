@@ -1,0 +1,310 @@
+{% extends 'base.html' %}
+
+{% block title %}Upload Transactions - Fraud Detection System{% endblock %}
+
+{% block extra_css %}
+<style>
+    .grid-container {
+        display: grid;
+        grid-template-columns: 1fr 2fr;
+        gap: 2rem;
+    }
+    
+    .card {
+        border: 1px solid #ddd;
+        padding: 1rem;
+        background-color: white;
+    }
+    
+    .upload-area {
+        border: 2px dashed #ccc;
+        padding: 2rem;
+        text-align: center;
+        background-color: #f9f9f9;
+        cursor: pointer;
+    }
+    
+    .upload-area:hover {
+        border-color: #2196F3;
+    }
+    
+    .file-info {
+        margin-top: 1rem;
+        padding: 0.5rem;
+        background-color: #e8f5e9;
+        border-radius: 4px;
+        display: none;
+    }
+    
+    .options-section {
+        background-color: #f9f9f9;
+        padding: 1rem;
+        border-radius: 4px;
+        margin-top: 1rem;
+    }
+    
+    .btn {
+        display: inline-block;
+        padding: 0.5rem 1rem;
+        background-color: #4CAF50;
+        color: white;
+        border: none;
+        cursor: pointer;
+        text-decoration: none;
+    }
+    
+    .btn:disabled {
+        background-color: #cccccc;
+        cursor: not-allowed;
+    }
+    
+    .form-group {
+        margin-bottom: 1rem;
+    }
+    
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+    }
+    
+    .code-sample {
+        background-color: #333;
+        color: #fff;
+        padding: 0.5rem;
+        border-radius: 4px;
+        overflow-x: auto;
+        font-family: monospace;
+        font-size: 0.9rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="grid-container">
+    <!-- Sidebar with instructions -->
+    <div>
+        <div class="card">
+            <h2>Instructions</h2>
+            
+            <div>
+                <p>
+                    Upload a CSV file containing transaction data
+                </p>
+                
+                <div style="margin: 1rem 0;">
+                    <h3>Required Format:</h3>
+                    <ul style="padding-left: 1.5rem;">
+                        <li>Timestamp (YYYY-MM-DD HH:MM:SS)</li>
+                        <li>From Bank (numeric code)</li>
+                        <li>From Account (hexadecimal code)</li>
+                        <li>To Bank (numeric code)</li>
+                        <li>To Account (hexadecimal code)</li>
+                        <li>Amount Received (numeric)</li>
+                        <li>Receiving Currency (text)</li>
+                        <li>Amount Paid (numeric)</li>
+                        <li>Payment Currency (text)</li>
+                        <li>Payment Format (text)</li>
+                        <li>Is Laundering (boolean)</li>
+                    </ul>
+                </div>
+                
+                <p style="color: #777; font-size: 0.9rem;">
+                    <strong>Note:</strong>
+                    Maximum file size: 500MB.
+                </p>
+                
+                <div style="margin-top: 1rem;">
+                    <h3>Example Row:</h3>
+                    <div class="code-sample">
+                        2022-08-01 09:30:45,12345,100428660,54321,1004286A8,1500.00,US Dollar,1500.00,US Dollar,Credit Card,False
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Upload form -->
+    <div>
+        <div class="card">
+            <h2>Upload Transaction Data</h2>
+            
+            <form method="POST" enctype="multipart/form-data" id="upload-form">
+                {% csrf_token %}
+                
+                <!-- File Upload Area -->
+                <div class="upload-area" id="upload-area">
+                    <input type="file" id="file-upload" class="hidden" name="{{ form.csv_file.name }}" accept=".csv" style="display: none;">
+                    
+                    <div>
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">📄</div>
+                        <p style="font-size: 1.2rem; margin-bottom: 0.5rem;">Drag & drop your CSV file here</p>
+                        <p style="color: #777; margin-bottom: 1rem;">or click to browse files</p>
+                        <button type="button" id="browse-button" style="padding: 0.5rem 1rem; background-color: #2196F3; color: white; border: none; cursor: pointer;">
+                            Select CSV File
+                        </button>
+                    </div>
+                    
+                    <div id="file-info" class="file-info">
+                        <div>
+                            <span>✓</span>
+                            <span id="file-name" style="font-weight: bold;"></span> (<span id="file-size"></span>)
+                        </div>
+                    </div>
+                </div>
+                
+                {% if form.csv_file.errors %}
+                <p style="color: #f44336; margin-top: 0.5rem;">{{ form.csv_file.errors.0 }}</p>
+                {% endif %}
+                
+                <!-- Upload Options -->
+                <div class="options-section">
+                    <h3>Upload Options</h3>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr; gap: 1rem;">
+                        <!-- Has Header -->
+                        <div class="form-group">
+                            <div style="display: flex; align-items: center;">
+                                {{ form.has_header }}
+                                <label for="{{ form.has_header.id_for_label }}" style="margin-left: 0.5rem; margin-bottom: 0;">
+                                    {{ form.has_header.label }}
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <!-- Delimiter -->
+                        <div class="form-group">
+                            <label for="{{ form.delimiter.id_for_label }}">{{ form.delimiter.label }}</label>
+                            {{ form.delimiter }}
+                        </div>
+                        
+                        <!-- Encoding -->
+                        <div class="form-group">
+                            <label for="{{ form.encoding.id_for_label }}">{{ form.encoding.label }}</label>
+                            {{ form.encoding }}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Submit Button -->
+                <div style="margin-top: 1rem; text-align: right;">
+                    <button type="submit" id="upload-btn" class="btn" disabled>
+                        Upload&Process
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div id="upload-processing-modal" style="
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+">
+    <div style="background-color: white; padding: 2rem; border-radius: 4px; text-align: center;">
+        <p style="margin: 0; font-size: 1.2rem;">Please wait</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const fileUpload = document.getElementById('file-upload');
+        const fileInfo = document.getElementById('file-info');
+        const fileName = document.getElementById('file-name');
+        const fileSize = document.getElementById('file-size');
+        const uploadBtn = document.getElementById('upload-btn');
+        const uploadForm = document.getElementById('upload-form');
+        const uploadProcessingModal = document.getElementById('upload-processing-modal');
+        const uploadArea = document.getElementById('upload-area');
+        const browseButton = document.getElementById('browse-button');
+        
+        uploadArea.addEventListener('click', function(e) {
+            if (e.target !== fileUpload) {
+                fileUpload.click();
+            }
+        });
+        
+        browseButton.addEventListener('click', function(e) {
+            e.stopPropagation();
+            fileUpload.click();
+        });
+        
+        fileUpload.addEventListener('change', function() {
+            if (fileUpload.files.length > 0) {
+                const file = fileUpload.files[0];
+                
+                fileName.textContent = file.name;
+                
+                let size = file.size;
+                const units = ['B', 'KB', 'MB', 'GB'];
+                let unitIndex = 0;
+                
+                while (size >= 1024 && unitIndex < units.length - 1) {
+                    size /= 1024;
+                    unitIndex++;
+                }
+                
+                fileSize.textContent = `${size.toFixed(2)} ${units[unitIndex]}`;
+                
+                fileInfo.style.display = 'block';
+                uploadBtn.disabled = false;
+            } else {
+                fileInfo.style.display = 'none';
+                uploadBtn.disabled = true;
+            }
+        });
+        
+        uploadForm.addEventListener('submit', function(e) {
+            uploadProcessingModal.style.display = 'flex';
+        });
+        
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, preventDefaults, false);
+        });
+        
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        ['dragenter', 'dragover'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, highlight, false);
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, unhighlight, false);
+        });
+        
+        function highlight() {
+            uploadArea.style.borderColor = '#2196F3';
+        }
+        
+        function unhighlight() {
+            uploadArea.style.borderColor = '#ccc';
+        }
+        
+        uploadArea.addEventListener('drop', handleDrop, false);
+        
+        function handleDrop(e) {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            
+            if (files.length > 0) {
+                fileUpload.files = files;
+                
+                const event = new Event('change');
+                fileUpload.dispatchEvent(event);
+            }
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,344 @@
+{% extends 'base.html' %}
+
+{% block title %}Model Inference{% endblock %}
+
+<style>
+
+#run-inference-btn:hover:not(:disabled) {
+    background-color: #0056b3;
+}
+
+#run-inference-btn:disabled {
+    background-color: #6c757d;
+    cursor: not-allowed;
+    opacity: 0.65;
+}
+
+#export-results-btn:hover {
+    background-color: #5a6268;
+}
+
+select:focus, input:focus {
+    outline: none;
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+}
+</style>
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+    <h1 style="font-size: 24px; font-weight: 600;">Model Inference</h1>
+    <a href="{% url 'training' %}" style="padding: 8px 16px; background-color: #6c757d; color: white; border-radius: 4px; text-decoration: none; transition: background-color 0.3s;">
+        <i class="fas fa-cogs" style="margin-right: 8px;"></i>Train New Model
+    </a>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr 2fr; gap: 24px;">
+    <!-- Model Selection Panel -->
+    <div style="background-color: white; border: 1px solid #ddd; border-radius: 4px; padding: 24px;">
+        <h2 style="font-size: 20px; font-weight: 600; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid #eee;">Inference Settings</h2>
+        
+        <div style="display: flex; flex-direction: column; gap: 24px;">
+            <div>
+                <label for="model-select" style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">Select Trained Model</label>
+                <select id="model-select" style="width: 100%; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; background-color: white; color: #333;">
+                    <option value="">Select a model</option>
+                    {% for model in available_models %}
+                    <option value="{{ model.name }}">{{ model.name }} ({{ model.type|upper }})</option>
+                    {% endfor %}
+                    {% if not available_models %}
+                    <option value="" disabled>No trained models</option>
+                    {% endif %}
+                </select>
+                
+                {% if not available_models %}
+                <p style="font-size: 14px; color: #666; margin-top: 8px;">No trained models found.</p>
+                {% endif %}
+            </div>
+            
+            <!-- Transaction Limit -->
+            <div>
+                <label for="transaction-limit" style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">Transaction Limit (Optional)</label>
+                <input type="number" id="transaction-limit" min="1" placeholder="Leave empty to process all test transactions" 
+                       style="width: 100%; padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; background-color: white; color: #333;">
+                <p style="font-size: 12px; color: #666; margin-top: 4px;">Number of transactions</p>
+            </div>
+            
+            <!-- Model Details -->
+            <div id="model-details" style="display: none;">
+                <h3 style="font-size: 18px; font-weight: 500; margin-bottom: 8px; color: #333;">Model Details</h3>
+                <div style="background-color: #f8f9fa; padding: 16px; border-radius: 4px; border: 1px solid #e9ecef;">
+                    <div id="model-info" style="font-size: 14px; color: #495057;">
+                    </div>
+                </div>
+            </div>
+            
+            <div>
+                <h3 style="font-size: 18px; font-weight: 500; margin-bottom: 8px; color: #333;">Data Status</h3>
+                <div style="background-color: #f8f9fa; padding: 16px; border-radius: 4px; border: 1px solid #e9ecef;">
+                    <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                        <i class="fas fa-file-csv" style="color: #00B4D8; margin-right: 8px;"></i>
+                        <span style="font-weight: 500; color: #333;">formatted_transactions.csv</span>
+                    </div>
+                    
+                    {% if data_status == 'no_data' %}
+                    <div style="color: #dc3545; font-size: 14px; margin-top: 8px;">
+                        <i class="fas fa-exclamation-triangle" style="margin-right: 4px;"></i>
+                        {{ status_message }}
+                    </div>
+                    {% elif data_status == 'outdated' %}
+                    <div style="color: #ffc107; font-size: 14px; margin-top: 8px;">
+                        <i class="fas fa-exclamation-circle" style="margin-right: 4px;"></i>
+                        {{ status_message }}
+                        <span style="display: block; margin-top: 4px; color: #666;">Processed: {{ processed_count }} / {{ total_count }} transactions</span>
+                    </div>
+                    {% else %}
+                    <div style="color: #28a745; font-size: 14px; margin-top: 8px;">
+                        <i class="fas fa-check-circle" style="margin-right: 4px;"></i>
+                        {{ status_message }}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div>
+                <button id="run-inference-btn" style="width: 100%; padding: 10px 16px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; transition: background-color 0.3s; font-weight: 500;" disabled>
+                    <i class="fas fa-play" style="margin-right: 8px;"></i>Run Inference
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Results Panel -->
+    <div style="background-color: white; border: 1px solid #ddd; border-radius: 4px; padding: 24px;">
+        <h2 style="font-size: 20px; font-weight: 600; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid #eee;">Inference Results</h2>
+        
+         <div id="results-loading" style="display: none;">
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 48px 0;">
+                <p style="font-size: 18px; font-weight: 500;">Running inference on test transactions...</p>
+                <p id="loading-details" style="font-size: 14px; color: #999; margin-top: 8px;"></p>
+            </div>
+        </div>
+        
+        <div id="results-empty" style="padding: 48px 0; text-align: center;">
+            <div style="margin-bottom: 16px;">
+                <i class="fas fa-chart-bar" style="font-size: 48px; color: #999;"></i>
+            </div>
+            <h3 style="font-size: 20px; font-weight: 500; margin-bottom: 8px; color: #333;">No Results available</h3>
+            <p style="color: #666;">Select a model and run inference to see results</p>
+        </div>
+        
+        <div id="results-content" style="display: none;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;">
+                <div style="background-color: #f8f9fa; padding: 16px; border-radius: 4px; border: 1px solid #e9ecef;">
+                    <div style="font-size: 14px; color: #666; margin-bottom: 4px;">Accuracy</div>
+                    <div style="font-size: 24px; font-weight: 700; color: #333;" id="accuracy-value">-</div>
+                </div>
+                
+                <div style="background-color: #f8f9fa; padding: 16px; border-radius: 4px; border: 1px solid #e9ecef;">
+                    <div style="font-size: 14px; color: #666; margin-bottom: 4px;">Precision</div>
+                    <div style="font-size: 24px; font-weight: 700; color: #333;" id="precision-value">-</div>
+                </div>
+                
+                <div style="background-color: #f8f9fa; padding: 16px; border-radius: 4px; border: 1px solid #e9ecef;">
+                    <div style="font-size: 14px; color: #666; margin-bottom: 4px;">Recall</div>
+                    <div style="font-size: 24px; font-weight: 700; color: #333;" id="recall-value">-</div>
+                </div>
+                
+                <div style="background-color: #f8f9fa; padding: 16px; border-radius: 4px; border: 1px solid #e9ecef;">
+                    <div style="font-size: 14px; color: #666; margin-bottom: 4px;">F1 Score</div>
+                    <div style="font-size: 24px; font-weight: 700; color: #333;" id="f1-value">-</div>
+                </div>
+            </div>
+            
+            <div style="background-color: #f8f9fa; padding: 24px; border-radius: 4px; margin-bottom: 24px; border: 1px solid #e9ecef;">
+                <h3 style="font-size: 18px; font-weight: 500; margin-bottom: 16px; color: #333;">Transaction Analysis</h3>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px;">
+                    <div>
+                        <div style="font-size: 14px; color: #666; margin-bottom: 4px;">Processed Transactions</div>
+                        <div style="font-size: 24px; font-weight: 700; color: #333;" id="processed-value">-</div>
+                    </div>
+                    
+                    <div>
+                        <div style="font-size: 14px; color: #666; margin-bottom: 4px;">Flagged as Fraudulent</div>
+                        <div style="font-size: 24px; font-weight: 700; color: #333;" id="flagged-value">-</div>
+                    </div>
+                    
+                    <div>
+                        <div style="font-size: 14px; color: #666; margin-bottom: 4px;">Transaction Limit</div>
+                        <div style="font-size: 24px; font-weight: 700; color: #333;" id="limit-value">-</div>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 16px;">
+                    <div style="font-size: 14px; color: #666; margin-bottom: 4px;">Fraudulent Transactions Percentage</div>
+                    <div style="width: 100%; background-color: #e9ecef; border-radius: 16px; height: 16px; margin-top: 8px;">
+                        <div id="fraud-percentage-bar" style="background-color: #dc3545; height: 16px; border-radius: 16px; width: 0%;"></div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 12px; margin-top: 4px; color: #666;">
+                        <span>0%</span>
+                        <span id="fraud-percentage-value">0%</span>
+                        <span>100%</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <span style="color: #666;">Model Used:</span>
+                    <span id="model-used" style="font-weight: 500; margin-left: 8px; color: #333;">-</span>
+                </div>
+                
+                <button id="export-results-btn" style="padding: 8px 16px; background-color: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                    <i class="fas fa-download" style="margin-right: 8px;"></i>Export Results
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const availableModels = {{ available_models|safe|default:"[]" }};
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        const modelSelect = document.getElementById('model-select');
+        const transactionLimit = document.getElementById('transaction-limit');
+        const runInferenceBtn = document.getElementById('run-inference-btn');
+        const resultsLoading = document.getElementById('results-loading');
+        const resultsEmpty = document.getElementById('results-empty');
+        const resultsContent = document.getElementById('results-content');
+        const modelDetails = document.getElementById('model-details');
+        const modelInfo = document.getElementById('model-info');
+        const loadingDetails = document.getElementById('loading-details');
+        const exportResultsBtn = document.getElementById('export-results-btn');
+        
+        {% if data_status == 'no_data' %}
+        runInferenceBtn.disabled = true;
+        {% else %}
+        runInferenceBtn.disabled = modelSelect.value === '';
+        {% endif %}
+        
+        modelSelect.addEventListener('change', function() {
+            {% if data_status == 'no_data' %}
+            runInferenceBtn.disabled = true;
+            {% else %}
+            runInferenceBtn.disabled = modelSelect.value === '';
+            {% endif %}
+            
+            if (modelSelect.value) {
+                const selectedModel = availableModels.find(m => m.name === modelSelect.value);
+                if (selectedModel) {
+                    modelDetails.style.display = 'block';
+                    modelInfo.innerHTML = `
+                        <div style="margin-bottom: 8px;"><strong>Type:</strong> ${selectedModel.type.toUpperCase()}</div>
+                        <div style="margin-bottom: 8px;"><strong>Epochs:</strong> ${selectedModel.epochs}</div>
+                        <div><strong>Last Modified:</strong> ${selectedModel.modified}</div>
+                    `;
+                }
+            } else {
+                modelDetails.style.display = 'none';
+            }
+        });
+        
+        runInferenceBtn.addEventListener('click', function() {
+            const selectedModel = modelSelect.value;
+            const limit = transactionLimit.value;
+            
+            if (!selectedModel) {
+                alert('Please select a model first.');
+                return;
+            }
+            
+            resultsEmpty.style.display = 'none';
+            resultsContent.style.display = 'none';
+            resultsLoading.style.display = 'block';
+            runInferenceBtn.disabled = true;
+            
+            if (limit) {
+                loadingDetails.textContent = `Processing first ${limit} test transactions...`;
+            } else {
+                loadingDetails.textContent = 'Processing all test transactions...';
+            }
+            
+            const formData = new FormData();
+            formData.append('model_name', selectedModel);
+            if (limit) {
+                formData.append('transaction_limit', limit);
+            }
+            
+            fetch('{% url "run_inference" %}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                resultsLoading.style.display = 'none';
+                runInferenceBtn.disabled = false;
+                
+                if (data.status === 'success') {
+                    resultsContent.style.display = 'block';
+                    
+                    document.getElementById('accuracy-value').textContent = (data.results.accuracy * 100).toFixed(1) + '%';
+                    document.getElementById('precision-value').textContent = (data.results.precision * 100).toFixed(1) + '%';
+                    document.getElementById('recall-value').textContent = (data.results.recall * 100).toFixed(1) + '%';
+                    document.getElementById('f1-value').textContent = (data.results.f1_score * 100).toFixed(1) + '%';
+                    
+                    document.getElementById('processed-value').textContent = data.results.processed_transactions.toLocaleString();
+                    document.getElementById('flagged-value').textContent = data.results.flagged_transactions.toLocaleString();
+                    document.getElementById('limit-value').textContent = data.results.transaction_limit;
+                    
+                    const fraudPercentage = (data.results.flagged_transactions / data.results.processed_transactions * 100).toFixed(1);
+                    document.getElementById('fraud-percentage-bar').style.width = fraudPercentage + '%';
+                    document.getElementById('fraud-percentage-value').textContent = fraudPercentage + '%';
+                    
+                    document.getElementById('model-used').textContent = selectedModel;
+                } else {
+                    alert('Error running inference: ' + data.message);
+                    resultsEmpty.style.display = 'block';
+                }
+            })
+            .catch(error => {
+                resultsLoading.style.display = 'none';
+                runInferenceBtn.disabled = false;
+                resultsEmpty.style.display = 'block';
+                
+                alert('Error running inference: ' + error.message);
+            });
+        });
+        
+        if (exportResultsBtn) {
+            exportResultsBtn.addEventListener('click', function() {
+                const results = {
+                    model_used: document.getElementById('model-used').textContent,
+                    accuracy: document.getElementById('accuracy-value').textContent,
+                    precision: document.getElementById('precision-value').textContent,
+                    recall: document.getElementById('recall-value').textContent,
+                    f1_score: document.getElementById('f1-value').textContent,
+                    processed_transactions: document.getElementById('processed-value').textContent,
+                    flagged_transactions: document.getElementById('flagged-value').textContent,
+                    fraud_percentage: document.getElementById('fraud-percentage-value').textContent,
+                    timestamp: new Date().toISOString()
+                };
+                
+                const blob = new Blob([JSON.stringify(results, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `inference_results_${results.model_used}_${new Date().getTime()}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            });
+        }
+    });
+</script>
+{% endblock %}

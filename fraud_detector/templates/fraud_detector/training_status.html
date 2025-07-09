@@ -1,0 +1,362 @@
+{% extends 'base.html' %}
+
+{% block title %}Training Status - {{ model_name }}{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+    <h1 style="font-size: 24px; font-weight: 600;">
+        <span>Training Progress:</span> {{ model_name }}
+    </h1>
+    <div style="display: flex; gap: 12px;">
+        <a href="{% url 'training' %}" style="padding: 8px 16px; background-color: #333; color: white; text-decoration: none; border-radius: 8px; transition: background-color 0.3s;">
+            <i class="fas fa-arrow-left" style="margin-right: 8px;"></i>Back to Training
+        </a>
+        
+        <a id="run-inference-link" href="{% url 'inference' %}?model={{ model_name }}" style="padding: 8px 16px; background-color: #6c757d; color: white; text-decoration: none; border-radius: 8px; transition: background-color 0.3s; {% if status.status != 'completed' %}opacity: 0.5; pointer-events: none;{% endif %}">
+            <i class="fas fa-play" style="margin-right: 8px;"></i>Run Inference
+        </a>
+    </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr 2fr; gap: 24px;">
+    <!-- Training Status Panel -->
+    <div>
+        <div style="background-color: white; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); padding: 24px; margin-bottom: 24px;">
+            <h2 style="font-size: 20px; font-weight: 600; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid #ddd;">Training Status</h2>
+            
+            <div id="status-container">
+                <div style="margin-bottom: 24px;">
+                    <div style="font-size: 14px; color: #777; margin-bottom: 4px;">Status</div>
+                    <div id="status-badge" style="display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 9999px; font-size: 12px; font-weight: 500; background-color: #555; color: #ddd;">
+                        <div id="status-indicator" style="width: 8px; height: 8px; margin-right: 8px; border-radius: 50%; background-color: #999;"></div>
+                        <span id="status-text">Loading...</span>
+                    </div>
+                </div>
+                
+                
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;">
+                    <div>
+                        <div style="font-size: 14px; color: #777; margin-bottom: 4px;">Total Epochs</div>
+                        <div id="total-epochs" style="font-size: 18px;">{{ model_config.epochs }}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 14px; color: #777; margin-bottom: 4px;">Duration</div>
+                        <div id="duration" style="font-size: 18px;">-</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 14px; color: #777; margin-bottom: 4px;">Start Time</div>
+                        <div id="start-time" style="font-size: 18px;">-</div>
+                    </div>
+                </div>
+                
+                <div style="margin-bottom: 24px;">
+                    <h3 style="font-size: 18px; font-weight: 500; margin-bottom: 12px;">Performance Metrics</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
+                        <div style="background-color: black; padding: 12px; border-radius: 8px;">
+                            <div style="font-size: 12px; color: #777; margin-bottom: 4px;">Train F1</div>
+                            <div id="train-f1" style="font-size: 18px; font-weight: 500;">-</div>
+                        </div>
+                        <div style="background-color: black; padding: 12px; border-radius: 8px;">
+                            <div style="font-size: 12px; color: #777; margin-bottom: 4px;">Validation F1</div>
+                            <div id="val-f1" style="font-size: 18px; font-weight: 500;">-</div>
+                        </div>
+                        <div style="background-color: black; padding: 12px; border-radius: 8px;">
+                            <div style="font-size: 12px; color: #777; margin-bottom: 4px;">Test F1</div>
+                            <div id="test-f1" style="font-size: 18px; font-weight: 500;">-</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="error-container" style="display: none; background-color: rgba(220, 53, 69, 0.2); border: 1px solid rgba(220, 53, 69, 0.4); border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+                    <h3 style="font-weight: 500; color: #dc3545; margin-bottom: 8px;">Training Error</h3>
+                    <pre id="error-message" style="font-size: 12px; color: #eee; white-space: pre-wrap;"></pre>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Model Configuration -->
+        <div style="background-color: white; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); padding: 24px;">
+            <h2 style="font-size: 20px; font-weight: 600; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid #ddd;">Model Configuration</h2>
+            
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+                <div>
+                    <div style="font-size: 14px; color: #777; margin-bottom: 4px;">Model Type</div>
+                    <div style="font-size: 18px;">{{ model_config.model_type }}</div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div>
+                        <div style="font-size: 14px; color: #777; margin-bottom: 4px;">Batch Size</div>
+                        <div>{{ model_config.batch_size }}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 14px; color: #777; margin-bottom: 4px;">Epochs</div>
+                        <div>{{ model_config.epochs }}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 14px; color: #777; margin-bottom: 4px;">Neighbor Sampling</div>
+                        <div>{{ model_config.num_neighbors|join:" " }}</div>
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div>
+                        <div style="font-size: 14px; color: #777; margin-bottom: 4px;">Edge MLPs</div>
+                        <div>{% if model_config.use_edge_mlps %}Yes{% else %}No{% endif %}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 14px; color: #777; margin-bottom: 4px;">Reverse MP</div>
+                        <div>{% if model_config.use_reverse_mp %}Yes{% else %}No{% endif %}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 14px; color: #777; margin-bottom: 4px;">Port Numberings</div>
+                        <div>{% if model_config.use_ports %}Yes{% else %}No{% endif %}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 14px; color: #777; margin-bottom: 4px;">Ego IDs</div>
+                        <div>{% if model_config.use_ego_ids %}Yes{% else %}No{% endif %}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Training Log Panel -->
+    <div style="background-color: white; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); padding: 24px;">
+        <h2 style="font-size: 20px; font-weight: 600; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid #ddd;">Training Log</h2>
+        
+        <div id="log-container" style="background-color: black; border-radius: 8px; padding: 16px; height: 600px; overflow-y: auto; font-family: monospace; font-size: 12px;">
+            <div id="log-messages" style="white-space: pre-wrap; color: #ddd;"></div>
+            <div id="log-loading" style="text-align: center; padding: 16px 0;">
+                <div style="display: inline-block; border: 4px solid #333; border-top: 4px solid #00B4D8; border-radius: 50%; width: 32px; height: 32px; animation: spin 2s linear infinite;"></div>
+                <p style="margin-top: 8px; color: #999;">Loading log messages</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const modelName = "{{ model_name }}";
+    const statusContainer = document.getElementById('status-container');
+    const statusIndicator = document.getElementById('status-indicator');
+    const statusText = document.getElementById('status-text');
+    const statusBadge = document.getElementById('status-badge');
+    const totalEpochs = document.getElementById('total-epochs');
+    const duration = document.getElementById('duration');
+    const startTime = document.getElementById('start-time');
+    const trainF1 = document.getElementById('train-f1');
+    const valF1 = document.getElementById('val-f1');
+    const testF1 = document.getElementById('test-f1');
+    const errorContainer = document.getElementById('error-container');
+    const errorMessage = document.getElementById('error-message');
+    const logMessages = document.getElementById('log-messages');
+    const logLoading = document.getElementById('log-loading');
+    const runInferenceLink = document.getElementById('run-inference-link');
+    const logContainer = document.getElementById('log-container');
+    
+    let lastLogCount = 0;
+    let pollInterval = null;
+    
+    function formatDuration(seconds) {
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        const secs = Math.floor(seconds % 60);
+        
+        if (hours > 0) {
+            return `${hours}h ${minutes}m ${secs}s`;
+        } else if (minutes > 0) {
+            return `${minutes}m ${secs}s`;
+        } else {
+            return `${secs}s`;
+        }
+    }
+    
+    function formatDate(dateString) {
+        if (!dateString) return '-';
+        const date = new Date(dateString);
+        return date.toLocaleString();
+    }
+    
+    function formatPercentage(value) {
+        return value.toFixed(1) + '%';
+    }
+    
+    function formatF1(value) {
+        if (value === null || value === undefined || value === 0) return '-';
+        if (value > 1) {
+            return value.toFixed(2) + '%';
+        }
+        return (value * 100).toFixed(2) + '%';
+    }
+    
+    function safeJsonParse(jsonString) {
+        try {
+            return JSON.parse(jsonString);
+        } catch (e) {
+            console.error("Error parsing JSON:", e);
+            return null;
+        }
+    }
+    
+    function updateStatus(data) {
+        console.log("Received status update:", data);
+        
+        if (!data) {
+            console.error("No data received in updateStatus");
+            return;
+        }
+        
+        switch (data.status) {
+            case 'pending':
+                statusIndicator.style.backgroundColor = '#999';
+                statusText.textContent = 'Pending';
+                statusBadge.style.backgroundColor = '#555';
+                statusBadge.style.color = '#ddd';
+                break;
+            case 'running':
+                statusIndicator.style.backgroundColor = '#3498db';
+                statusText.textContent = 'Running';
+                statusBadge.style.backgroundColor = 'rgba(52, 152, 219, 0.4)';
+                statusBadge.style.color = '#3498db';
+                break;
+            case 'completed':
+                statusIndicator.style.backgroundColor = '#28a745';
+                statusText.textContent = 'Completed';
+                statusBadge.style.backgroundColor = 'rgba(40, 167, 69, 0.4)';
+                statusBadge.style.color = '#28a745';
+
+
+                runInferenceLink.style.opacity = '1';
+                runInferenceLink.style.pointerEvents = 'auto';
+                break;
+            case 'failed':
+                statusIndicator.style.backgroundColor = '#dc3545';
+                statusText.textContent = 'Failed';
+                statusBadge.style.backgroundColor = 'rgba(220, 53, 69, 0.4)';
+                statusBadge.style.color = '#dc3545';
+                break;
+            case 'not_found':
+                statusIndicator.style.backgroundColor = '#ffc107';
+                statusText.textContent = 'Not Found';
+                statusBadge.style.backgroundColor = 'rgba(255, 193, 7, 0.4)';
+                statusBadge.style.color = '#ffc107';
+                break;
+            default:
+                statusIndicator.style.backgroundColor = '#999';
+                statusText.textContent = 'Unknown';
+                statusBadge.style.backgroundColor = '#555';
+                statusBadge.style.color = '#ddd';
+        }
+        
+        
+        
+        if (data.duration) {
+            duration.textContent = formatDuration(data.duration);
+        } else {
+            duration.textContent = '-';
+        }
+        
+        if (data.start_time) {
+            startTime.textContent = formatDate(data.start_time);
+        } else {
+            startTime.textContent = '-';
+        }
+        
+        trainF1.textContent = formatF1(data.train_f1);
+        valF1.textContent = formatF1(data.val_f1);
+        testF1.textContent = formatF1(data.test_f1);
+        
+        if (data.error) {
+            errorContainer.style.display = 'block';
+            errorMessage.textContent = data.error;
+        } else {
+            errorContainer.style.display = 'none';
+        }
+        
+        if (data.log_messages && data.log_messages.length > 0) {
+            if (data.log_messages.length !== lastLogCount) {
+                if (lastLogCount === 0) {
+                    logMessages.textContent = data.log_messages.join('\n');
+                } else if (data.log_messages.length > lastLogCount) {
+                    const newLogs = data.log_messages.slice(lastLogCount);
+                    const newContent = document.createTextNode('\n' + newLogs.join('\n'));
+                    logMessages.appendChild(newContent);
+                } else {
+                    logMessages.textContent = data.log_messages.join('\n');
+                }
+                
+                lastLogCount = data.log_messages.length;
+                logLoading.style.display = 'none';
+                
+                logContainer.scrollTop = logContainer.scrollHeight;
+            }
+        } else {
+            if (logLoading.style.display !== 'none' && data.status === 'running') {
+            } else if (data.status === 'pending') {
+                logLoading.style.display = 'block';
+            } else {
+                logLoading.style.display = 'none';
+                if (lastLogCount === 0) {
+                    logMessages.textContent = 'No log messages available.';
+                }
+            }
+        }
+    }
+    
+    {% if status_json %}
+    const initialStatus = {{ status_json|safe }};
+    if (initialStatus) {
+        updateStatus(initialStatus);
+    }
+    {% endif %}
+    
+    function startPolling() {
+        if (pollInterval) {
+            clearInterval(pollInterval);
+        }
+        
+        pollInterval = setInterval(function() {
+            fetch(`/fraud-detector/models/training/status/${modelName}/api/`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    updateStatus(data);
+                    
+                    // Stop polling if training is complete, failed, or not found
+                    if (data.status === 'completed' || data.status === 'failed' || data.status === 'not_found') {
+                        clearInterval(pollInterval);
+                        pollInterval = null;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching status:', error);
+                });
+        }, 1000);
+    }
+    
+    startPolling();
+    
+    window.addEventListener('beforeunload', function() {
+        if (pollInterval) {
+            clearInterval(pollInterval);
+            pollInterval = null;
+        }
+    });
+});
+</script>
+
+<style>
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+</style>
+{% endblock %}

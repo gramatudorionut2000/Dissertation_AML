@@ -1,0 +1,276 @@
+{% extends 'base.html' %}
+
+{% block title %}Create Transaction{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 2rem;
+        background-color: white;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+    
+    .form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .form-group {
+        margin-bottom: 1rem;
+    }
+    
+    .form-group label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        color: #333;
+    }
+    
+    .form-group .help-text {
+        font-size: 0.875rem;
+        color: #666;
+        margin-top: 0.25rem;
+    }
+    
+    .form-group.full-width {
+        grid-column: span 2;
+    }
+    
+    .section-header {
+        grid-column: span 2;
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: #2196F3;
+        margin-top: 1.5rem;
+        margin-bottom: 0.5rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #e0e0e0;
+    }
+    
+    .form-actions {
+        margin-top: 2rem;
+        display: flex;
+        justify-content: flex-end;
+        gap: 1rem;
+    }
+    
+    .btn {
+        padding: 0.5rem 1.5rem;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-block;
+        transition: background-color 0.3s;
+    }
+    
+    .btn-primary {
+        background-color: #2196F3;
+        color: white;
+    }
+    
+    .btn-primary:hover {
+        background-color: #1976D2;
+    }
+    
+    .btn-secondary {
+        background-color: #666;
+        color: white;
+    }
+    
+    .btn-secondary:hover {
+        background-color: #555;
+    }
+    
+    .checkbox-wrapper {
+        display: flex;
+        align-items: center;
+        margin-top: 0.5rem;
+    }
+    
+    .checkbox-wrapper input[type="checkbox"] {
+        margin-right: 0.5rem;
+    }
+    
+    .error-message {
+        color: #f44336;
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+    }
+    
+    .alert {
+        padding: 1rem;
+        margin-bottom: 1rem;
+        border-radius: 4px;
+    }
+    
+    .alert-info {
+        background-color: #E3F2FD;
+        color: #1565C0;
+        border: 1px solid #90CAF9;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <h1 style="margin-bottom: 1.5rem;">Create New Transaction</h1>
+    
+    <form method="POST">
+        {% csrf_token %}
+        
+        {% if form.non_field_errors %}
+        <div style="color: #f44336; margin-bottom: 1rem;">
+            {{ form.non_field_errors }}
+        </div>
+        {% endif %}
+        
+        <div class="form-grid">
+            <!-- Timestamp -->
+            <div class="form-group full-width">
+                <label for="{{ form.timestamp.id_for_label }}">{{ form.timestamp.label }} *</label>
+                {{ form.timestamp }}
+                {% if form.timestamp.help_text %}
+                <div class="help-text">{{ form.timestamp.help_text }}</div>
+                {% endif %}
+                {% if form.timestamp.errors %}
+                <div class="error-message">{{ form.timestamp.errors.0 }}</div>
+                {% endif %}
+            </div>
+            
+            
+            <!-- From Bank -->
+            <div class="form-group">
+                <label for="{{ form.from_bank.id_for_label }}">{{ form.from_bank.label }} *</label>
+                {{ form.from_bank }}
+                {% if form.from_bank.help_text %}
+                <div class="help-text">{{ form.from_bank.help_text }}</div>
+                {% endif %}
+                {% if form.from_bank.errors %}
+                <div class="error-message">{{ form.from_bank.errors.0 }}</div>
+                {% endif %}
+            </div>
+            
+            <!-- From Account -->
+            <div class="form-group">
+                <label for="{{ form.from_account.id_for_label }}">{{ form.from_account.label }} *</label>
+                {{ form.from_account }}
+                {% if form.from_account.help_text %}
+                <div class="help-text">{{ form.from_account.help_text }}</div>
+                {% endif %}
+                {% if form.from_account.errors %}
+                <div class="error-message">{{ form.from_account.errors.0 }}</div>
+                {% endif %}
+            </div>
+            
+            
+            <!-- To Bank -->
+            <div class="form-group">
+                <label for="{{ form.to_bank.id_for_label }}">{{ form.to_bank.label }} *</label>
+                {{ form.to_bank }}
+                {% if form.to_bank.help_text %}
+                <div class="help-text">{{ form.to_bank.help_text }}</div>
+                {% endif %}
+                {% if form.to_bank.errors %}
+                <div class="error-message">{{ form.to_bank.errors.0 }}</div>
+                {% endif %}
+            </div>
+            
+            <!-- To Account -->
+            <div class="form-group">
+                <label for="{{ form.to_account.id_for_label }}">{{ form.to_account.label }} *</label>
+                {{ form.to_account }}
+                {% if form.to_account.help_text %}
+                <div class="help-text">{{ form.to_account.help_text }}</div>
+                {% endif %}
+                {% if form.to_account.errors %}
+                <div class="error-message">{{ form.to_account.errors.0 }}</div>
+                {% endif %}
+            </div>
+            
+
+            <!-- Amount Received -->
+            <div class="form-group">
+                <label for="{{ form.amount_received.id_for_label }}">{{ form.amount_received.label }} *</label>
+                {{ form.amount_received }}
+                {% if form.amount_received.errors %}
+                <div class="error-message">{{ form.amount_received.errors.0 }}</div>
+                {% endif %}
+            </div>
+            
+            <!-- Receiving Currency -->
+            <div class="form-group">
+                <label for="{{ form.receiving_currency.id_for_label }}">{{ form.receiving_currency.label }} *</label>
+                {{ form.receiving_currency }}
+                {% if form.receiving_currency.errors %}
+                <div class="error-message">{{ form.receiving_currency.errors.0 }}</div>
+                {% endif %}
+            </div>
+            
+            <!-- Amount Paid -->
+            <div class="form-group">
+                <label for="{{ form.amount_paid.id_for_label }}">{{ form.amount_paid.label }} *</label>
+                {{ form.amount_paid }}
+                {% if form.amount_paid.errors %}
+                <div class="error-message">{{ form.amount_paid.errors.0 }}</div>
+                {% endif %}
+            </div>
+            
+            <!-- Payment Currency -->
+            <div class="form-group">
+                <label for="{{ form.payment_currency.id_for_label }}">{{ form.payment_currency.label }} *</label>
+                {{ form.payment_currency }}
+                {% if form.payment_currency.errors %}
+                <div class="error-message">{{ form.payment_currency.errors.0 }}</div>
+                {% endif %}
+            </div>
+            
+            <!-- Payment Format -->
+            <div class="form-group">
+                <label for="{{ form.payment_format.id_for_label }}">{{ form.payment_format.label }} *</label>
+                {{ form.payment_format }}
+                {% if form.payment_format.errors %}
+                <div class="error-message">{{ form.payment_format.errors.0 }}</div>
+                {% endif %}
+            </div>
+            
+            <!-- Is Laundering -->
+            <div class="form-group">
+                <label for="{{ form.is_laundering.id_for_label }}">{{ form.is_laundering.label }}</label>
+                <div class="checkbox-wrapper">
+                    {{ form.is_laundering }}
+                    <span style="color: #666;">Mark as laundering</span>
+                </div>
+                {% if form.is_laundering.help_text %}
+                <div class="help-text">{{ form.is_laundering.help_text }}</div>
+                {% endif %}
+                {% if form.is_laundering.errors %}
+                <div class="error-message">{{ form.is_laundering.errors.0 }}</div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="form-actions">
+            <a href="{% url 'transactions' %}" class="btn btn-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary">Create Transaction</button>
+        </div>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const timestampInput = document.querySelector('input[name="timestamp"]');
+    if (timestampInput && !timestampInput.value) {
+        const now = new Date();
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        timestampInput.value = now.toISOString().slice(0, 16);
+    }
+    
+});
+</script>
+{% endblock %}

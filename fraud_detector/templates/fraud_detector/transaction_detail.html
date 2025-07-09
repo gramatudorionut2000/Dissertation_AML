@@ -1,0 +1,565 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Transaction Details - #{{ transaction.id }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .detail-card {
+        border: 1px solid #ddd;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        background-color: white;
+    }
+    
+    .grid-container {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+    
+    .data-group {
+        margin-bottom: 1rem;
+    }
+    
+    .data-label {
+        color: #666;
+        font-size: 0.9rem;
+    }
+    
+    .data-value {
+        margin-top: 0.25rem;
+    }
+    
+    .fraud-alert {
+        background-color: rgba(220, 53, 69, 0.1);
+        border: 1px solid #DC3545;
+        color: #333;
+        padding: 1rem;
+        border-radius: 4px;
+        margin-bottom: 1rem;
+    }
+    
+    .badge {
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        border-radius: 1rem;
+        font-size: 0.75rem;
+    }
+    
+    .badge-danger {
+        background-color: rgba(220, 53, 69, 0.2);
+        color: #DC3545;
+    }
+    
+    .badge-success {
+        background-color: rgba(40, 167, 69, 0.2);
+        color: #28A745;
+    }
+    
+    .status-indicator {
+        display: inline-block;
+        width: 0.75rem;
+        height: 0.75rem;
+        border-radius: 50%;
+    }
+    
+    .status-processed {
+        background-color: #28A745;
+    }
+    
+    .status-unprocessed {
+        background-color: #6c757d;
+    }
+    
+    #graph-container {
+        height: 400px;
+        background-color: #f9f9f9;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+    <h1>Transaction Details <span style="color: #777;">#{{ transaction.id }}</span></h1>
+    <div>
+        <a href="{% url 'transaction_update' transaction.id %}" style="background-color: #2196F3; color: white; border: none; padding: 0.5rem 1rem; cursor: pointer; margin-right: 0.5rem; text-decoration: none;">
+            Edit Transaction
+        </a>
+        <button id="toggle-view-btn" style="background-color: #5D4E8C; color: white; border: none; padding: 0.5rem 1rem; cursor: pointer; margin-right: 0.5rem;">
+            Visualize as Graph
+        </button>
+        <a href="{% url 'transactions' %}" style="background-color: #333; color: white; text-decoration: none; padding: 0.5rem 1rem;">
+            Back to Transactions
+        </a>
+    </div>
+</div>
+
+{% if transaction.is_laundering %}
+<div class="fraud-alert">
+    <div style="display: flex; align-items: start;">
+        <div style="margin-right: 1rem; color: #DC3545; font-size: 1.5rem;"></div>
+        <div>
+            <p style="margin-top: 0.5rem; color: #DC3545; font-weight: bold;">Flagged for Money Laundering</p>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Detail View (Default) -->
+<div id="detail-view">
+    <div class="grid-container">
+        <!-- Timestamp Information -->
+        <div class="detail-card">
+            <h2>Timestamp Information</h2>
+            <div class="data-group">
+                <div class="data-label">Transaction Timestamp</div>
+                <div class="data-value">{{ transaction.timestamp }}</div>
+            </div>
+            <div class="data-group">
+                <div class="data-label">Date Added to System</div>
+                <div class="data-value">{{ transaction.date_added }}</div>
+            </div>
+            <div class="data-group">
+                <div class="data-label">Last Modified</div>
+                <div class="data-value">{{ transaction.last_modified }}</div>
+            </div>
+        </div>
+
+        <!-- Source & Destination -->
+        <div class="detail-card">
+            <h2>Source & Destination</h2>
+            <div class="data-group">
+                <div class="data-label">Source Bank</div>
+                <div class="data-value">{{ transaction.from_bank }}</div>
+            </div>
+            <div class="data-group">
+                <div class="data-label">Source Account</div>
+                <div class="data-value" style="font-family: monospace;">{{ transaction.from_account }}</div>
+            </div>
+            <div class="data-group">
+                <div class="data-label">Destination Bank</div>
+                <div class="data-value">{{ transaction.to_bank }}</div>
+            </div>
+            <div class="data-group">
+                <div class="data-label">Destination Account</div>
+                <div class="data-value" style="font-family: monospace;">{{ transaction.to_account }}</div>
+            </div>
+        </div>
+
+        <!-- Financial Details -->
+        <div class="detail-card">
+            <h2>Financial Details</h2>
+            <div class="data-group">
+                <div class="data-label">Amount Received</div>
+                <div class="data-value" style="font-size: 1.2rem;">
+                    {{ transaction.amount_received }} <span style="color: #777;">{{ transaction.receiving_currency }}</span>
+                </div>
+            </div>
+            <div class="data-group">
+                <div class="data-label">Amount Paid</div>
+                <div class="data-value" style="font-size: 1.2rem;">
+                    {{ transaction.amount_paid }} <span style="color: #777;">{{ transaction.payment_currency }}</span>
+                </div>
+            </div>
+            <div class="data-group" style="margin-top: 1rem;">
+                <div class="data-label">Payment Format</div>
+                <div class="data-value">{{ transaction.payment_format }}</div>
+            </div>
+        </div>
+
+        <div class="detail-card">
+            <h2>AML Assessment</h2>
+            <div class="data-group">
+                <div class="data-label">Money Laundering Status</div>
+                <div class="data-value" style="{% if transaction.is_laundering %}color: #DC3545;{% else %}color: #28A745;{% endif %}">
+                    {% if transaction.is_laundering %}
+                        <span class="badge badge-danger">Flagged for Money Laundering</span>
+                    {% else %}
+                        <span class="badge badge-success">No Money Laundering Detected</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="data-group">
+                <div class="data-label">Processed for Inference</div>
+                <div class="data-value">
+                    {% if transaction.processed %}
+                        Processed
+                    {% else %}
+                        Not Processed
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="graph-view" style="display: none;">
+    <div class="grid-container">
+        <div class="detail-card">
+            <h2>Graph Controls</h2>
+            
+            <div style="margin: 1rem 0;">
+                <div style="margin-bottom: 1rem;">
+                    <label for="depth-slider">Depth (1-6)</label>
+                    <div style="display: flex; align-items: center; margin-top: 0.5rem;">
+                        <input id="depth-slider" type="range" min="1" max="6" value="1" style="flex-grow: 1; margin-right: 0.5rem;">
+                        <span id="depth-value">1</span>
+                    </div>
+                    <p style="font-size: 0.8rem; color: #777; margin-top: 0.25rem;">How many connected nodes to include</p>
+                </div>
+                
+                <div>
+                    <label>
+                        <input type="checkbox" id="fraud-only">
+                        Show Fraudulent Only
+                    </label>
+                </div>
+            </div>
+            
+            <div style="margin: 1rem 0;">
+                <h3 style="margin-bottom: 0.5rem;">Legend</h3>
+                <div>
+                    <div style="display: flex; align-items: center; margin-bottom: 0.25rem;">
+                        <div style="width: 1rem; height: 1rem; border-radius: 50%; background-color: #3498db; margin-right: 0.5rem;"></div>
+                        <span>Regular Account</span>
+                    </div>
+                    <div style="display: flex; align-items: center; margin-bottom: 0.25rem;">
+                        <div style="width: 1rem; height: 1rem; border-radius: 50%; background-color: #e74c3c; margin-right: 0.5rem;"></div>
+                        <span>Account Involved in Fraud</span>
+                    </div>
+                    <div style="display: flex; align-items: center; margin-bottom: 0.25rem;">
+                        <div style="width: 2rem; height: 0.25rem; background-color: #2ecc71; margin-right: 0.5rem;"></div>
+                        <span>Normal Transaction</span>
+                    </div>
+                    <div style="display: flex; align-items: center;">
+                        <div style="width: 2rem; height: 0.25rem; background-color: #e74c3c; margin-right: 0.5rem;"></div>
+                        <span>Fraudulent Transaction</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div>
+                <button id="refresh-graph-btn" style="display: block; width: 100%; background-color: #5D4E8C; color: white; border: none; padding: 0.5rem; margin-bottom: 0.5rem; cursor: pointer;">
+                    Refresh Graph
+                </button>
+                
+                <button id="reset-graph-btn" style="display: block; width: 100%; background-color: #333; color: white; border: none; padding: 0.5rem; cursor: pointer;">
+                    Reset View
+                </button>
+            </div>
+        </div>
+        
+        <div style="grid-column: span 1;">
+            <div class="detail-card">
+                <h2>Transaction Network</h2>
+                <div id="graph-container">
+                    <div style="height: 100%; display: flex; align-items: center; justify-content: center;">
+                        <p>Click "Refresh Graph" to load.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="selected-tx-details" class="detail-card" style="display: none; margin-top: 1rem;">
+                <h2>Selected Transaction</h2>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                    <div>
+                        <div class="data-label">From Account</div>
+                        <p id="selected-from" style="font-family: monospace;"></p>
+                    </div>
+                    <div>
+                        <div class="data-label">To Account</div>
+                        <p id="selected-to" style="font-family: monospace;"></p>
+                    </div>
+                    <div>
+                        <div class="data-label">Amount</div>
+                        <p id="selected-amount"></p>
+                    </div>
+                    <div>
+                        <div class="data-label">Date & Time</div>
+                        <p id="selected-timestamp"></p>
+                    </div>
+                    <div>
+                        <div class="data-label">Money Laundering</div>
+                        <p id="selected-fraud-score"></p>
+                    </div>
+                    <div>
+                        <div class="data-label">Actions</div>
+                        <p><a id="selected-tx-link" href="#">View Details</a></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.23.0/cytoscape.min.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const toggleViewBtn = document.getElementById('toggle-view-btn');
+    const detailView = document.getElementById('detail-view');
+    const graphView = document.getElementById('graph-view');
+    const depthSlider = document.getElementById('depth-slider');
+    const depthValue = document.getElementById('depth-value');
+    const fraudOnlyCheckbox = document.getElementById('fraud-only');
+    const refreshGraphBtn = document.getElementById('refresh-graph-btn');
+    const resetGraphBtn = document.getElementById('reset-graph-btn');
+    const selectedTxDetails = document.getElementById('selected-tx-details');
+    
+    const transactionId = {{ transaction.id }};
+    
+    let cy;
+    let isProcessing = false;
+    
+    if (toggleViewBtn) {
+        toggleViewBtn.addEventListener('click', function() {
+            if (graphView.style.display === 'none') {
+                detailView.style.display = 'none';
+                graphView.style.display = 'block';
+                toggleViewBtn.textContent = 'Show Details';
+                loadGraphData(); 
+            } else {
+                graphView.style.display = 'none';
+                detailView.style.display = 'block';
+                toggleViewBtn.textContent = 'Visualize as Graph';
+            }
+        });
+    }
+    
+    if (depthSlider && depthValue) {
+        depthSlider.addEventListener('input', function() {
+            depthValue.textContent = depthSlider.value;
+        });
+    }
+    
+    if (refreshGraphBtn) {
+        refreshGraphBtn.addEventListener('click', loadGraphData);
+    }
+    
+    if (resetGraphBtn) {
+        resetGraphBtn.addEventListener('click', function() {
+            if (cy) {
+                cy.fit();
+                cy.center();
+            }
+        });
+    }
+    
+    function loadGraphData() {
+        if (isProcessing) return;
+        isProcessing = true;
+        
+        const depth = depthSlider ? depthSlider.value : 1;
+        const fraudOnly = fraudOnlyCheckbox ? fraudOnlyCheckbox.checked : false;
+        
+        const graphContainer = document.getElementById('graph-container');
+        if (graphContainer) {
+            graphContainer.innerHTML = 
+                '<div style="display: flex; align-items: center; justify-content: center; height: 100%;">' +
+                '<div style="width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid #2196F3; border-radius: 50%; animation: spin 2s linear infinite;"></div>' +
+                '</div>';
+        }
+        
+        fetch(`/fraud-detector/transactions/${transactionId}/graph-data/?depth=${depth}&fraud_only=${fraudOnly}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`Network error: ${response.status} ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (graphContainer) {
+                    renderGraph(data);
+                }
+            })
+            .catch(error => {
+                if (graphContainer) {
+                    graphContainer.innerHTML = 
+                        `<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%;">
+                            <p style="color: #f44336; margin-bottom: 1rem;">${error.message}</p>
+                            <button id="retry-graph-btn" style="padding: 0.5rem 1rem; background-color: #2196F3; color: white; border: none; cursor: pointer;">
+                                Retry
+                            </button>
+                        </div>`;
+                    
+                    document.getElementById('retry-graph-btn')?.addEventListener('click', loadGraphData);
+                }
+            })
+            .finally(() => {
+                isProcessing = false;
+            });
+    }
+    
+    function renderGraph(data) {
+        if (!data.nodes || !data.edges || data.nodes.length === 0) {
+            document.getElementById('graph-container').innerHTML = 
+                '<div style="display: flex; align-items: center; justify-content: center; height: 100%;">' +
+                '<p style="color: #ff9800;">No data available for the current settings. Try increasing the depth or disabling "Fraudulent Only".</p></div>';
+            return;
+        }
+        
+        cy = cytoscape({
+            container: document.getElementById('graph-container'),
+            elements: {
+                nodes: data.nodes.map(node => ({
+                    data: {
+                        id: node.id,
+                        label: node.label,
+                        bank: node.bank,
+                        type: node.type,
+                        fraud_connection: Boolean(node.fraud_connection)
+                    }
+                })),
+                edges: data.edges.map(edge => ({
+                    data: {
+                        id: edge.id,
+                        source: edge.source,
+                        target: edge.target,
+                        amount: edge.amount,
+                        currency: edge.currency,
+                        timestamp: edge.timestamp,
+                        is_fraud: Boolean(edge.is_fraud),
+                        transaction_id: edge.transaction_id
+                    }
+                }))
+            },
+            style: [
+                {
+                    selector: 'node',
+                    style: {
+                        'label': 'data(label)',
+                        'background-color': '#3498db',
+                        'color': '#fff',
+                        'text-outline-color': '#000',
+                        'text-outline-width': 1,
+                        'text-valign': 'center',
+                        'text-halign': 'center',
+                        'width': 50,
+                        'height': 50,
+                        'font-size': 12
+                    }
+                },
+                {
+                    selector: 'node[?fraud_connection]',
+                    style: {
+                        'background-color': '#e74c3c',
+                        'border-width': 3,
+                        'border-color': '#c0392b'
+                    }
+                },
+                {
+                    selector: 'edge',
+                    style: {
+                        'width': 3,
+                        'line-color': '#2ecc71',
+                        'target-arrow-color': '#2ecc71',
+                        'target-arrow-shape': 'triangle',
+                        'curve-style': 'bezier'
+                    }
+                },
+                {
+                    selector: 'edge[?is_fraud]',
+                    style: {
+                        'line-color': '#e74c3c',
+                        'target-arrow-color': '#e74c3c',
+                        'width': 4
+                    }
+                },
+                {
+                    selector: '.highlighted',
+                    style: {
+                        'border-width': 4,
+                        'border-color': '#2980b9'
+                    }
+                },
+                {
+                    selector: 'edge.highlighted',
+                    style: {
+                        'width': 5,
+                        'line-color': '#2980b9',
+                        'target-arrow-color': '#2980b9'
+                    }
+                }
+            ],
+            layout: {
+                name: 'cose',
+                animate: false,
+                randomize: true,
+                nodeRepulsion: 10000,
+                nodeOverlap: 20,
+                idealEdgeLength: 100,
+                edgeElasticity: 50,
+                nestingFactor: 5,
+                gravity: 60,
+                numIter: 2000,
+                initialTemp: 300,
+                coolingFactor: 0.95,
+                minTemp: 1.0,
+                padding: 30
+            }
+        });
+        
+        cy.one('layoutstop', function() {
+            cy.fit();
+            cy.center();
+            
+            const currentTxId = `tx_${transactionId}`;
+            const currentTx = cy.getElementById(currentTxId);
+            if (currentTx.length > 0) {
+                currentTx.addClass('highlighted');
+                
+                const sourceId = currentTx.data('source');
+                const targetId = currentTx.data('target');
+                cy.getElementById(sourceId).addClass('highlighted');
+                cy.getElementById(targetId).addClass('highlighted');
+                
+                if (selectedTxDetails) {
+                    updateTransactionDetails(currentTx.data());
+                }
+            }
+        });
+        
+    }
+    
+    function updateTransactionDetails(edgeData, sourceData, targetData) {
+        if (!edgeData || !selectedTxDetails) return;
+        
+        document.getElementById('selected-from').textContent = sourceData?.label || '';
+        document.getElementById('selected-to').textContent = targetData?.label || '';
+        document.getElementById('selected-amount').textContent = `${edgeData.amount.toLocaleString()} ${edgeData.currency}`;
+        
+        const date = new Date(edgeData.timestamp);
+        document.getElementById('selected-timestamp').textContent = date.toLocaleString();
+        
+        const fraudScoreElement = document.getElementById('selected-fraud-score');
+        
+        if (edgeData.is_fraud) {
+            fraudScoreElement.style.color = '#DC3545';
+            fraudScoreElement.textContent = 'Flagged for Money Laundering';
+        } else {
+            fraudScoreElement.style.color = '#28A745';
+            fraudScoreElement.textContent = 'No Money Laundering Detected';
+        }
+        
+        const txLink = document.getElementById('selected-tx-link');
+        txLink.href = `/fraud-detector/transactions/${edgeData.transaction_id}/`;
+        
+        selectedTxDetails.style.display = 'block';
+    }
+
+    const styleSheet = document.createElement("style");
+    styleSheet.textContent = `
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }`;
+    document.head.appendChild(styleSheet);
+});
+</script>
+{% endblock %}
