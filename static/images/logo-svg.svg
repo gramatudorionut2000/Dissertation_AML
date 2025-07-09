@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Background Shield -->
+  <path d="M256 16C123.45 16 16 123.45 16 256s107.45 240 240 240 240-107.45 240-240S388.55 16 256 16z" fill="#121212"/>
+  
+  <!-- Shield Shape -->
+  <path d="M256 80c-60 0-120 20-120 20s0 120 0 160c0 60 60 120 120 120s120-60 120-120c0-40 0-160 0-160s-60-20-120-20z" fill="#000000"/>
+  
+  <!-- Inner Shield Border -->
+  <path d="M256 100c-50 0-100 16-100 16s0 100 0 133.33c0 50 50 100 100 100s100-50 100-100c0-33.33 0-133.33 0-133.33s-50-16-100-16z" fill="#5D4E8C" stroke="#00B4D8" stroke-width="6"/>
+  
+  <!-- Lock Icon -->
+  <path d="M256 150c-30 0-55 25-55 55v40h-15v90h140v-90h-15v-40c0-30-25-55-55-55z M256 180c15 0 25 10 25 25v40h-50v-40c0-15 10-25 25-25z" fill="#F5F5F5"/>
+  
+  <!-- Scan Lines (Representing Financial Data/Transactions) -->
+  <path d="M246 320h20v8h-20z M226 336h60v8h-60z M206 352h100v8h-100z" fill="#00B4D8"/>
+</svg>

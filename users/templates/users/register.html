@@ -1,0 +1,189 @@
+{% extends 'base.html' %}
+
+{% block title %}Register{% endblock %}
+
+{% block extra_css %}
+<style>
+    .auth-container {
+        width: 600px;
+        margin: 2rem auto;
+        border: 1px solid #ddd;
+        padding: 2rem;
+        background-color: white;
+    }
+    
+    .form-group {
+        margin-bottom: 1rem;
+    }
+    
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+    }
+    
+    .form-control {
+        width: 100%;
+        padding: 0.5rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+    
+    .btn {
+        display: inline-block;
+        padding: 0.5rem 1rem;
+        background-color: #2196F3;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        text-decoration: none;
+    }
+    
+    .btn-block {
+        display: block;
+        width: 100%;
+    }
+    
+    .text-center {
+        text-align: center;
+    }
+    
+    .help-text {
+        color: #777;
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+    }
+    
+    .two-columns {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <h2 style="margin-top: 0; margin-bottom: 1.5rem; text-align: center;">Create a New Account</h2>
+    
+    <form method="post">
+        {% csrf_token %}
+        
+        {% if form.non_field_errors %}
+        <div style="color: #f44336; margin-bottom: 1rem; padding: 0.5rem; background-color: rgba(244, 67, 54, 0.1); border-radius: 4px;">
+            {% for error in form.non_field_errors %}
+            <p style="margin: 0;">{{ error }}</p>
+            {% endfor %}
+        </div>
+        {% endif %}
+        
+        <div class="form-group">
+            <label for="{{ form.username.id_for_label }}">Username</label>
+            {{ form.username }}
+            {% if form.username.errors %}
+            <div style="color: #f44336; font-size: 0.875rem; margin-top: 0.25rem;">
+                {% for error in form.username.errors %}
+                <p style="margin: 0;">{{ error }}</p>
+                {% endfor %}
+            </div>
+            {% endif %}
+            <p class="help-text">Letters, digits and @/./+/-/_ only.</p>
+        </div>
+        
+        <div class="two-columns">
+            <div class="form-group">
+                <label for="{{ form.first_name.id_for_label }}">First Name</label>
+                {{ form.first_name }}
+                {% if form.first_name.errors %}
+                <div style="color: #f44336; font-size: 0.875rem; margin-top: 0.25rem;">
+                    {% for error in form.first_name.errors %}
+                    <p style="margin: 0;">{{ error }}</p>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            
+            <div class="form-group">
+                <label for="{{ form.last_name.id_for_label }}">Last Name</label>
+                {{ form.last_name }}
+                {% if form.last_name.errors %}
+                <div style="color: #f44336; font-size: 0.875rem; margin-top: 0.25rem;">
+                    {% for error in form.last_name.errors %}
+                    <p style="margin: 0;">{{ error }}</p>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label for="{{ form.email.id_for_label }}">Email Address</label>
+            {{ form.email }}
+            {% if form.email.errors %}
+            <div style="color: #f44336; font-size: 0.875rem; margin-top: 0.25rem;">
+                {% for error in form.email.errors %}
+                <p style="margin: 0;">{{ error }}</p>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+        
+        <div class="form-group">
+            <label for="{{ form.password1.id_for_label }}">Password</label>
+            {{ form.password1 }}
+            {% if form.password1.errors %}
+            <div style="color: #f44336; font-size: 0.875rem; margin-top: 0.25rem;">
+                {% for error in form.password1.errors %}
+                <p style="margin: 0;">{{ error }}</p>
+                {% endfor %}
+            </div>
+            {% endif %}
+            <ul class="help-text" style="padding-left: 1.5rem; margin-top: 0.5rem;">
+                <li>Your password can't be too similar to your other personal information.</li>
+                <li>Your password must contain at least 8 characters.</li>
+                <li>Your password can't be a commonly used password.</li>
+                <li>Your password can't be entirely numeric.</li>
+            </ul>
+        </div>
+        
+        <div class="form-group">
+            <label for="{{ form.password2.id_for_label }}">Confirm Password</label>
+            {{ form.password2 }}
+            {% if form.password2.errors %}
+            <div style="color: #f44336; font-size: 0.875rem; margin-top: 0.25rem;">
+                {% for error in form.password2.errors %}
+                <p style="margin: 0;">{{ error }}</p>
+                {% endfor %}
+            </div>
+            {% endif %}
+            <p class="help-text">Enter the password again.</p>
+        </div>
+        
+        <div class="form-group">
+            <label for="{{ form.is_auditor.id_for_label }}" style="display: block;">
+                Register as Auditor
+            </label>
+            <div>
+                {{ form.is_auditor }}
+            </div>
+            {% if form.is_auditor.errors %}
+            <div style="color: #f44336; font-size: 0.875rem; margin-top: 0.25rem;">
+                {% for error in form.is_auditor.errors %}
+                <p style="margin: 0;">{{ error }}</p>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+        
+        <div class="form-group" style="margin-top: 1.5rem;">
+            <button type="submit" class="btn btn-block">
+                Register
+            </button>
+        </div>
+    </form>
+    
+    <div style="margin-top: 1.5rem; text-align: center;">
+        <p style="margin: 0;">Already have an account? <a href="{% url 'login' %}">Log In</a></p>
+    </div>
+</div>
+{% endblock %}

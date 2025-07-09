@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+
+{% block title %}About{% endblock %}
+
+{% block content %}
+<div style="border: 1px solid #ddd; padding: 1rem; margin-bottom: 1rem; background-color: white;">
+    <h1>About</h1>
+    
+    <p>
+        We provide machine learning models to be used by (simulated) auditors in detecting money laundering activities, as well as functionalities for model explainability and transaction visualization
+    </p>
+    
+    <h2>Core Features</h2>
+    
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 1rem; margin: 1rem 0;">
+        <div style="border: 1px solid #ddd; padding: 1rem; background-color: #f9f9f9;">
+            <h3>Network Visualization</h3>
+            <p>Visualize transactions as networks. Analyze how accounts are connected through transaction flows.</p>
+        </div>
+        
+        <div style="border: 1px solid #ddd; padding: 1rem; background-color: #f9f9f9;">
+            <h3>Machine learning AML</h3>
+            <p>Machine learning algorithms for detecting laundering patterns in inter-institutional financial data.</p>
+        </div>
+        
+        <div style="border: 1px solid #ddd; padding: 1rem; background-color: #f9f9f9;">
+            <h3>Data Importing</h3>
+            <p>Import transaction data formatted according to IBM financial data structure.</p>
+        </div>
+        
+        <div style="border: 1px solid #ddd; padding: 1rem; background-color: #f9f9f9;">
+            <h3>Filtering</h3>
+            <p>Apply filters to the data based on the features to better focus the analysis.</p>
+        </div>
+    </div>
+    
+    <h2>Transaction Visualization</h2>
+    <p>
+        As the current implementation is meant to simulate the activity of a financial auditor, the users are able to visualize the transactions a node (an account) is implicated in, up to a depth of 6 nodes, which are represented as subgraphs.
+    </p>
+    
+    <div style="border: 1px solid #ddd; padding: 1rem; margin: 1rem 0; background-color: #f9f9f9;">
+        <h3>Data Loading Page</h3>
+        <p>
+            By either uploading a file or providing a local path for a data file, the user is to load a CSV file with the data (it has to respect the structure of the IBM data) into the database. After the database is populated, the user will be able to use pages where it can visualize the data, as well as conduct model training and inference.
+        </p>
+        
+    </div>
+    
+    <div style="border: 1px solid #ddd; padding: 1rem; margin: 1rem 0; background-color: #f9f9f9;">
+        <h3>Money Laundering Prediction</h3>
+        <p>
+            After loading in the data, the user will be able to use a training page, where they can train various models on the preprocessed data, or use checkpoints of pretrained models in order to conduct inference and predict whether a transaction is fraudulent or not
+        </p>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+            <div style="border: 1px solid #ddd; padding: 0.5rem; background-color: white;">
+                <h4>Step 1: Data Preprocessing</h4>
+                <p>Preprocess tabular transaction data into features that can be used by machine learning models</p>
+            </div>
+            <div style="border: 1px solid #ddd; padding: 0.5rem; background-color: white;">
+                <h4>Step 2: Model Training</h4>
+                <p>Train machine learning models on preprocessed data or load pretrained model checkpoints</p>
+            </div>
+            <div style="border: 1px solid #ddd; padding: 0.5rem; background-color: white;">
+                <h4>Step 3: Fraud Prediction</h4>
+                <p>Use models on transactions in order to identify potentially fraudulent transactions</p>
+            </div>
+        </div>
+    </div>
+    
+    <h2>Software Application Specifications</h2>
+    <ul>
+        <li>Backend built using Djnago</li>
+        <li>Machine learning models implemented using Pytorch and Pytorch-Geometric</li>
+    </ul>
+    
+</div>
+{% endblock %}

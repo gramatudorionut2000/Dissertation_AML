@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+
+{% block title %}Home Page{% endblock %}
+
+{% block content %}
+<div style="margin: 2rem 0;">
+    <h1>Money Laundering detection</h1>
+
+    
+    <div style="margin: 1rem 0;">
+        {% if user.is_authenticated and user.is_auditor %}
+        <a href="{% url 'transaction_upload' %}" style="display: inline-block; background-color: #4CAF50; color: white; padding: 0.5rem 1rem; text-decoration: none;">Upload Data</a>
+        {% else %}
+        <a href="{% url 'register' %}" style="display: inline-block; background-color: #2196F3; color: white; padding: 0.5rem 1rem; text-decoration: none; margin-right: 1rem;">Get Started</a>
+        <a href="{% url 'login' %}" style="display: inline-block; background-color: #333; color: white; padding: 0.5rem 1rem; text-decoration: none;">Log In</a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Features Section -->
+<div style="margin: 2rem 0; border-top: 1px solid #ddd; padding-top: 2rem;">
+    <h2>Software application Features</h2>
+    <p>Our application seeks to simulate the activities of financial auditors, concerning fraudulent tranbsaction detection and analysis</p>
+    
+        
+        <div style="border: 1px solid #ddd; padding: 1rem;">
+            <h3>Machine Learning</h3>
+            <p>Use machine learning models and explainability modules in order to detect and understand specifics of fraudulent transactions</p>
+        </div>
+        
+        <div style="border: 1px solid #ddd; padding: 1rem;">
+            <h3>AML Compliance</h3>
+            <p>Ensure compliance with Anti-Money Laundering regulations through detection of suspicious transactions.</p>
+        </div>
+        
+        <div style="border: 1px solid #ddd; padding: 1rem;">
+            <h3>Visual Analytics</h3>
+            <p>Analyze transactions in order to spot fraudulent activities.</p>
+        </div>
+        
+        
+    </div>
+</div>
+{% endblock %}
